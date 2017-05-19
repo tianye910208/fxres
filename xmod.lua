@@ -124,8 +124,9 @@ MATERIAL_FILTER_UV_ANI			=	0x00000200	-- 遮罩贴图的UV动画信息标记
 
 
 
-function load_xmod(fd)
+function load_xmod(fd, file)
     local m = {}
+    m.file = file
     m.flag = fd:read(4)
     if m.flag ~= "XVAM" then
         return nil, "_FLAG_"..tostring(m.flag)
@@ -149,6 +150,8 @@ function load_xmod(fd)
     m.rootMaxX, m.rootMaxY, m.rootMaxZ = string.unpack("fff", fd:read(12))
    
     m.materialCount = 0
+    m.materialList = {}
+    
     m.rootNodeCount = string.unpack("I", fd:read(4))
     m.rootNodes = {}
     
@@ -200,10 +203,13 @@ function load_node(fd, m)
         end
         
         p.materialCount = string.unpack("i", fd:read(4))
+        p.materialList = {}
         p.materials = {}
         for i = 1, p.materialCount do
             local mat = load_material(fd, m, p)
             mat.indexInModel = m.materialCount + i
+            table.insert(p.materialList, mat)
+            table.insert(m.materialList, mat)
         end
         m.materialCount = m.materialCount + p.materialCount
         
@@ -241,6 +247,7 @@ function load_location(fd, m, p)
     local location_camera = nil
     
     if p.modelInfo & MODEL_MATRIX_ANI > 0 then
+        hash_mark("MODEL_MATRIX_ANI_"..tostring(p.type))
         local frame = m.endframe - m.startframe + 1
         location = {}
         for i = 1, frame do
@@ -307,6 +314,8 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4 * 3
 	elseif p.modelInfo & MODEL_POSITION_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4 * 3
+        hash_mark("MODEL_POSITION_ANI")
+        print("MODEL_POSITION_ANI", m.file)
 	end
 
 	-- Normal
@@ -314,6 +323,7 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4 * 3
 	elseif p.modelInfo & MODEL_NORMAL_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4 * 3
+        hash_mark("MODEL_NORMAL_ANI")
 	end
 
 	-- Color
@@ -321,6 +331,7 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4
 	elseif p.modelInfo & MODEL_COLOR_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4
+        hash_mark("MODEL_COLOR_ANI")
 	end
 
 	-- Illum
@@ -328,6 +339,7 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4
 	elseif p.modelInfo & MODEL_ILLUM_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4
+        hash_mark("MODEL_ILLUM_ANI")
 	end
 
 	-- Tangent
@@ -335,6 +347,7 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4 * 3
 	elseif p.modelInfo & MODEL_TANGENT_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4 * 3
+        hash_mark("MODEL_TANGENT_ANI")
 	end
 
 	-- Binormal
@@ -342,6 +355,7 @@ function load_material(fd, m, p)
 		mat.singleVertexSize = mat.singleVertexSize + 4 * 3
 	elseif p.modelInfo & MODEL_BINORMAL_ANI > 0 then
 		mat.multiVertexSize = mat.multiVertexSize + 4 * 3
+        hash_mark("MODEL_BINORMAL_ANI")
 	end
 
 	-- Diffuse texture
@@ -401,31 +415,37 @@ function load_material(fd, m, p)
     end
 
     if mat.materialInfo & MATERIAL_AMBIENT_ANI > 0 then
+        hash_mark("MATERIAL_AMBIENT_ANI")
         fd:read(4*3*frame)
     elseif mat.materialInfo & MATERIAL_AMBIENT_INFO > 0 then
         fd:read(4*3)
     end
     if mat.materialInfo & MATERIAL_DIFFUSE_ANI > 0 then
+        hash_mark("MATERIAL_DIFFUSE_ANI")
         fd:read(4*3*frame)
     elseif mat.materialInfo & MATERIAL_DIFFUSE_INFO > 0 then
         fd:read(4*3)
     end
     if mat.materialInfo & MATERIAL_SPECULAR_ANI > 0 then
+        hash_mark("MATERIAL_SPECULAR_ANI")
         fd:read(4*3*frame)
     elseif mat.materialInfo & MATERIAL_SPECULAR_INFO > 0 then
         fd:read(4*3)
     end
     if mat.materialInfo & MATERIAL_EMISSIVE_ANI > 0 then
+        hash_mark("MATERIAL_EMISSIVE_ANI")
         fd:read(4*3*frame)
     elseif mat.materialInfo & MATERIAL_EMISSIVE_INFO > 0 then
         fd:read(4*3)
     end
     if mat.materialInfo & MATERIAL_OPACITY_ANI > 0 then
+        hash_mark("MATERIAL_OPACITY_ANI")
         fd:read(4*frame)
     elseif mat.materialInfo & MATERIAL_OPACITY_INFO > 0 then
         fd:read(4)
     end
     if mat.materialInfo & MATERIAL_GLOSS_ANI > 0 then
+        hash_mark("MATERIAL_GLOSS_ANI")
         fd:read(4*frame)
     elseif mat.materialInfo & MATERIAL_GLOSS_INFO > 0 then
         fd:read(4)
@@ -433,6 +453,7 @@ function load_material(fd, m, p)
     
     if mat.materialInfoEx & MATERIAL_FILTER_MAP_INFO > 0 then
         if mat.materialInfoEx & MATERIAL_FILTER_PARAM_ANI > 0 then
+            hash_mark("MATERIAL_FILTER_PARAM_ANI")
             local reverse = string.unpack("i", fd:read(4))
             fd:read(4*4*frame)
         else
@@ -459,6 +480,7 @@ function load_material(fd, m, p)
         end
     end
     if mat.materialInfo & MATERIAL_DIFFUSE_UV_ANI > 0 then
+        hash_mark("MATERIAL_DIFFUSE_UV_ANI")
         fd:read(4 * 7 * frame)
     end
     if mat.materialInfo & MATERIAL_BUMP_MAP_INFO > 0 then
@@ -472,6 +494,7 @@ function load_material(fd, m, p)
     if mat.materialInfo & MATERIAL_SPECULAR_LEVEL_MAP_INFO > 0 then
         mat.tex.specularLevelMap = load_name(fd)
         mat.specularLevelMap = load_name(fd)
+        --print(m.file, "specularLevelMap", mat.specularLevelMap)
     end
     if mat.materialInfo & MATERIAL_GLOSSINESS_MAP_INFO > 0 then
         mat.tex.glossinessMap = load_name(fd)
@@ -484,10 +507,12 @@ function load_material(fd, m, p)
     if mat.materialInfo & MATERIAL_LIGHTMAP_INFO > 0 then
         mat.tex.lightMap = load_name(fd)
         mat.lightMap = load_name(fd)
+        --print(m.file, "lightMap", mat.lightMap)
     end
     if mat.materialInfo & MATERIAL_SELF_ILLUMINATION_INFO > 0 then
         mat.tex.emissiveMap = load_name(fd)
-        mat.lightMap = load_name(fd)
+        mat.emissiveMap = load_name(fd)
+        print(m.file, "emissiveMap", mat.emissiveMap)
     end
     
     if mat.materialInfoEx & MATERIAL_FRAME_INFO > 0 then
@@ -497,8 +522,9 @@ function load_material(fd, m, p)
     if mat.materialInfoEx & MATERIAL_FILTER_MAP_INFO > 0 then
         mat.tex.filterMap = load_name(fd)
         mat.filterMap = load_name(fd)
-        
+        --print(m.file, "filterMap", mat.filterMap)
         if mat.materialInfoEx & MATERIAL_FILTER_UV_ANI > 0 then
+            hash_mark("MATERIAL_FILTER_UV_ANI")
             fd:read(4 * 7 * frame)
         end
     end
@@ -680,15 +706,15 @@ function fail_mark(v, ver)
 end
 
 
---local path = "D:\\jiuyin\\res"
-local path = "E:\\artwork\\JiuYinRes"
+local path = "D:\\jiuyin\\res"
+--local path = "E:\\artwork\\JiuYinRes"
 local list = lsdir(path, "%.xmod$")
 --local list = {"E:\\artwork\\JiuYinRes\\map_obj.package.files\\res\\map\\obj\\effect\\e_door.xmod"}
 for i,v in ipairs(list) do
-    print(v)
+    --print(v)
     local fd = io.open(v, "rb")
     if fd then
-        local m, msg = load_xmod(fd)
+        local m, msg = load_xmod(fd, v)
         if m then
             hash_mark("version"..string.format("%X", m.version))
             hash_mark("fileType"..m.fileType)
@@ -698,6 +724,18 @@ for i,v in ipairs(list) do
             for i,v in ipairs(m.rootNodes) do
                 hash_mark("NodeType"..v.type)
                 hash_mark("childNodeCount"..v.childNodeCount)
+                
+                if v.materialCount then
+                    hash_mark("materialCount"..v.materialCount)
+                    for j,mat in ipairs(v.materialList) do
+                        for k,t in pairs(mat.tex) do
+                            if mat[k] then
+                                hash_mark("Mat."..k)
+                            end
+                        end
+                    end
+                end
+            
                 
                 if v.attachedHelperCount then
                     hash_mark("NodeAttachedHelperCount"..v.attachedHelperCount)
@@ -717,7 +755,7 @@ end
 
 print("\n\n===============info================\n")
 for i,v in ipairs(fail) do
-    print(v[1], v[2])
+    --print(v[1], v[2])
 end
 print("===============fail================", #fail, "\n")
 local data = {}
