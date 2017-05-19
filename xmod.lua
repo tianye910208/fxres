@@ -128,13 +128,12 @@ function load_xmod(fd)
     local m = {}
     m.flag = fd:read(4)
     if m.flag ~= "XVAM" then
-        return nil
+        return nil, "_FLAG_"..tostring(m.flag)
     end
     m.version, m.fileType, m.origin = string.unpack("III", fd:read(12))
     if m.version ~= 0x1002 and m.version ~= 0x1001 and m.version ~= 0x1000 then
-        --error("load xmod fail "..string.format("0x%08X", m.version))
         --print("load xmod "..string.format("0x%08X", m.version))
-        return nil
+        return nil, "_V_"..string.format("%X", m.version)
     end
     
     if m.origin == 0 then
@@ -185,7 +184,7 @@ function load_node(fd, m)
     
     p.modelInfo = load_node_info(fd, m, p)
     --location matrix
-    p.localtion = load_location(fd, m, p)
+    p.location = load_location(fd, m, p)
     
     if p.type == FXNODE_TYPE_MESH or p.type == FXNODE_TYPE_SKIN then
         --split tree
@@ -674,7 +673,11 @@ local hash = {}
 function hash_mark(key)
     hash[key] = (hash[key] or 0) + 1
 end
-
+local fail = {}
+function fail_mark(v, ver)
+    table.insert(fail, {v, ver})
+    hash_mark("_EEEEEEEEEEE_LoadFailed"..tostring(ver))
+end
 
 
 --local path = "D:\\jiuyin\\res"
@@ -685,7 +688,7 @@ for i,v in ipairs(list) do
     print(v)
     local fd = io.open(v, "rb")
     if fd then
-        local m = load_xmod(fd)
+        local m, msg = load_xmod(fd)
         if m then
             hash_mark("version"..string.format("%X", m.version))
             hash_mark("fileType"..m.fileType)
@@ -706,13 +709,17 @@ for i,v in ipairs(list) do
                 hash_mark("rootNodeType"..i.."="..v)
             end
         else
-            hash_mark("EEEEEEEEEEE_LoadFailed")
+            fail_mark(v, msg)
         end
         fd:close()
     end
 end
 
-print("\n\ntotal", #list)
+print("\n\n===============info================\n")
+for i,v in ipairs(fail) do
+    print(v[1], v[2])
+end
+print("===============fail================", #fail, "\n")
 local data = {}
 for k,v in pairs(hash) do
     table.insert(data, {k,v})
@@ -721,6 +728,8 @@ table.sort(data, function(a,b) return a[1] < b[1] end)
 for i,v in ipairs(data) do
     print(v[1], v[2])
 end
+print("===============load================", #list, "\n")
+    
     
     
     
